@@ -1,0 +1,36 @@
+//------------------------------------------------------------------------------
+//  NKUIShaders.shd
+//------------------------------------------------------------------------------
+
+@uniform_block vsParams VSParams
+mat4 proj Proj
+@end
+
+@texture_block textures NKUITextures
+sampler2D tex Texture
+@end
+
+@vs vsNKUI
+@use_uniform_block vsParams
+@in vec4 position
+@in vec2 texcoord0
+@in vec4 color0
+@out vec2 uv
+@out vec4 color
+{
+    _position = mul(proj, position);
+    uv = texcoord0;
+    color = color0;
+}
+@end
+
+@fs fsNKUI
+@use_texture_block textures
+@in vec2 uv
+@in vec4 color
+{
+    _color = tex2D(tex, uv) * color;
+}
+@end
+
+@program NKUIShader vsNKUI fsNKUI
