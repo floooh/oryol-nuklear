@@ -14,6 +14,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
+#include <stdio.h>
 #include "NKUI/nuklear_config.h"
 #include "nuklear/nuklear.h"
 #if __GNUC__
