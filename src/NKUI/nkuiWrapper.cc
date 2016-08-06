@@ -141,7 +141,8 @@ void
 nkuiWrapper::Draw() {
 
     // upload vertex and index data
-    nk_convert_config config = { };
+    nk_convert_config config;
+    Memory::Clear(&config, sizeof(config));
     config.global_alpha = 1.0f;
     config.shape_AA = NK_ANTI_ALIASING_ON;
     config.line_AA = NK_ANTI_ALIASING_ON;
@@ -154,10 +155,10 @@ nkuiWrapper::Draw() {
     nk_buffer_init_fixed(&ibuf, this->indexData, sizeof(this->indexData));
     nk_convert(&this->ctx, &this->cmds, &vbuf, &ibuf, &config);
     if (vbuf.needed > 0) {
-        Gfx::UpdateVertices(this->drawState.Mesh[0], this->vertexData, vbuf.needed);
+        Gfx::UpdateVertices(this->drawState.Mesh[0], this->vertexData, int(vbuf.needed));
     }
     if (ibuf.needed > 0) {
-        Gfx::UpdateIndices(this->drawState.Mesh[0], this->indexData, ibuf.needed);
+        Gfx::UpdateIndices(this->drawState.Mesh[0], this->indexData, int(ibuf.needed));
     }
 
     // compute projection matrix
