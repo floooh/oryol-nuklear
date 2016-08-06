@@ -6,7 +6,7 @@ Oryol sample: https://floooh.github.com/oryol-samples/asmjs/NuklearUIDemo.html
 
 ### How to integrate into your Oryol project:
 
-Add a new import to the fips.yml file your project:
+Add a new import to the fips.yml file of your project:
 
 ```yaml
 imports:
