@@ -19,15 +19,20 @@ nkuiWrapper::Setup(const NKUISetup& setup) {
     o_assert_dbg(!this->isValid);
     this->isValid = true;
 
-    // create resources
-    this->gfxResLabel = Gfx::PushResourceLabel();
-    this->createDefaultFont(setup);
-    this->createMeshAndPipeline();
-    Gfx::PopResourceLabel();
+    Memory::Clear(&this->config, sizeof(this->config));
+    this->config.global_alpha = setup.GlobalAlpha;
+    this->config.line_AA = setup.LineAA ? NK_ANTI_ALIASING_ON:NK_ANTI_ALIASING_OFF;
+    this->config.shape_AA = setup.ShapeAA ? NK_ANTI_ALIASING_ON:NK_ANTI_ALIASING_OFF;
+    this->config.circle_segment_count = setup.CircleSegmentCount;
+    this->config.curve_segment_count = setup.CurveSegmentCount;
+    this->config.arc_segment_count = setup.ArcSegmentCount;
 
-    // initialize nuklear
+    this->createResources(setup);
+
     nk_init_default(&this->ctx, &this->defaultFont->handle);
     nk_buffer_init_default(&this->cmds);
+    nk_buffer_init_fixed(&vbuf, this->vertexData, sizeof(this->vertexData));
+    nk_buffer_init_fixed(&ibuf, this->indexData, sizeof(this->indexData));
 }
 
 //------------------------------------------------------------------------------
@@ -44,17 +49,18 @@ nkuiWrapper::Discard() {
 
 //------------------------------------------------------------------------------
 void
-nkuiWrapper::createDefaultFont(const NKUISetup& setup) {
+nkuiWrapper::createResources(const NKUISetup& setup) {
     o_assert_dbg(nullptr == this->defaultFont);
 
-    // let Nuklear create a font bitmap
+    // push a new resource label and store it (needed to destroy resources later)
+    this->gfxResLabel = Gfx::PushResourceLabel();
+
+    // render default font into an Oryol texture
     nk_font_atlas_init_default(&this->atlas);
     nk_font_atlas_begin(&this->atlas);
     this->defaultFont = nk_font_atlas_add_default(&this->atlas, 13, 0);
     int imgWidth, imgHeight;
     const void* imgData = nk_font_atlas_bake(&this->atlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
-
-    // create Oryol Gfx texture from font image data
     auto texSetup = TextureSetup::FromPixelData(imgWidth, imgHeight, 1, TextureType::Texture2D, PixelFormat::RGBA8);
     texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
@@ -64,12 +70,7 @@ nkuiWrapper::createDefaultFont(const NKUISetup& setup) {
     texSetup.ImageData.Sizes[0][0] = imgSize;
     int texId = this->curTexId++;
     this->textures[texId] = Gfx::CreateResource(texSetup, imgData, imgSize);
-    nk_font_atlas_end(&this->atlas, nk_handle_id(texId), &this->nullTex);
-}
-
-//------------------------------------------------------------------------------
-void
-nkuiWrapper::createMeshAndPipeline() {
+    nk_font_atlas_end(&this->atlas, nk_handle_id(texId), &this->config.null);
 
     // create mesh with dynamic vertex- and index-buffer
     auto mshSetup = MeshSetup::Empty(MaxNumVertices, Usage::Stream, IndexType::Index16, MaxNumIndices, Usage::Stream);
@@ -95,6 +96,8 @@ nkuiWrapper::createMeshAndPipeline() {
     ps.RasterizerState.CullFaceEnabled = false;
     ps.RasterizerState.SampleCount = Gfx::DisplayAttrs().SampleCount;
     this->drawState.Pipeline = Gfx::CreateResource(ps);
+
+    Gfx::PopResourceLabel();
 }
 
 //------------------------------------------------------------------------------
@@ -140,25 +143,15 @@ nkuiWrapper::NewFrame() {
 void
 nkuiWrapper::Draw() {
 
-    // upload vertex and index data
-    nk_convert_config config;
-    Memory::Clear(&config, sizeof(config));
-    config.global_alpha = 1.0f;
-    config.shape_AA = NK_ANTI_ALIASING_ON;
-    config.line_AA = NK_ANTI_ALIASING_ON;
-    config.circle_segment_count = 22;
-    config.curve_segment_count = 22;
-    config.arc_segment_count = 22;
-    config.null = this->nullTex;
-    struct nk_buffer vbuf, ibuf;
-    nk_buffer_init_fixed(&vbuf, this->vertexData, sizeof(this->vertexData));
-    nk_buffer_init_fixed(&ibuf, this->indexData, sizeof(this->indexData));
-    nk_convert(&this->ctx, &this->cmds, &vbuf, &ibuf, &config);
-    if (vbuf.needed > 0) {
-        Gfx::UpdateVertices(this->drawState.Mesh[0], this->vertexData, int(vbuf.needed));
+    // generate and upload vertex and index data
+    nk_buffer_clear(&this->vbuf);
+    nk_buffer_clear(&this->ibuf);
+    nk_convert(&this->ctx, &this->cmds, &this->vbuf, &this->ibuf, &this->config);
+    if (this->vbuf.needed > 0) {
+        Gfx::UpdateVertices(this->drawState.Mesh[0], this->vertexData, int(this->vbuf.needed));
     }
-    if (ibuf.needed > 0) {
-        Gfx::UpdateIndices(this->drawState.Mesh[0], this->indexData, int(ibuf.needed));
+    if (this->ibuf.needed > 0) {
+        Gfx::UpdateIndices(this->drawState.Mesh[0], this->indexData, int(this->ibuf.needed));
     }
 
     // compute projection matrix

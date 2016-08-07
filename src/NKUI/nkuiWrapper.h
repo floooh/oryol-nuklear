@@ -38,10 +38,8 @@ public:
     nk_context ctx;
 
 private:
-    /// create the default font
-    void createDefaultFont(const NKUISetup& setup);
-    /// create dynamic mesh and pipeline object
-    void createMeshAndPipeline();
+    /// create Oryol render resources
+    void createResources(const NKUISetup& setup);
 
     static const int MaxNumVertices = 64 * 1024;
     static const int MaxNumIndices = 128 * 1024;
@@ -49,8 +47,10 @@ private:
     bool isValid = false;
     nk_font_atlas atlas;
     nk_font* defaultFont = nullptr;
-    nk_draw_null_texture nullTex;
     nk_buffer cmds;
+    nk_buffer vbuf;
+    nk_buffer ibuf;
+    nk_convert_config config;
 
     ResourceLabel gfxResLabel;
     static const int MaxTextures = 16;
