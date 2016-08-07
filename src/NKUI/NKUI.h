@@ -22,12 +22,20 @@ public:
     static void Discard();
     /// test if NKUI module has been setup
     static bool IsValid();
-    /// access to Nuklear context (needed for calling nuklear UI functions)
-    static nk_context* Ctx();
+
     /// start a new frame (handles nuklear input)
     static nk_context* NewFrame();
+    /// get pointer to nuklear context (if needed away from NewFrame())
+    static nk_context* Ctx();
     /// draw the nuklear UI
     static void Draw();
+
+    /// allocate a new image handle
+    static struct nk_image AllocImage();
+    /// free an image handle
+    static void FreeImage(const struct nk_image& image);
+    /// bind an Oryol texture to an image handle
+    static void BindImage(const struct nk_image& image, Id texId);
 
 private:
     struct _state {

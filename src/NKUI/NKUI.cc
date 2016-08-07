@@ -48,5 +48,26 @@ NKUI::Draw() {
     state->nkuiWrapper.Draw();
 }
 
+//------------------------------------------------------------------------------
+struct nk_image
+NKUI::AllocImage() {
+    o_assert_dbg(IsValid());
+    return state->nkuiWrapper.AllocImage();
+}
+
+//------------------------------------------------------------------------------
+void
+NKUI::FreeImage(const struct nk_image& image) {
+    o_assert_dbg(IsValid());
+    state->nkuiWrapper.FreeImage(image);
+}
+
+//------------------------------------------------------------------------------
+void
+NKUI::BindImage(const struct nk_image& image, Id texId) {
+    o_assert_dbg(IsValid());
+    state->nkuiWrapper.BindImage(image, texId);
+}
+
 } // namespace Oryol
 

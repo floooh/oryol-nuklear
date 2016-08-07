@@ -34,6 +34,12 @@ public:
     void NewFrame();
     /// draw current frame
     void Draw();
+    /// grab a new image handle
+    struct nk_image AllocImage();
+    /// free an image handle
+    void FreeImage(const struct nk_image& image);
+    /// bind an Oryol texture to an image handle
+    void BindImage(const struct nk_image& image, Id texId);
 
     nk_context ctx;
 
@@ -53,10 +59,11 @@ private:
     nk_convert_config config;
 
     ResourceLabel gfxResLabel;
-    static const int MaxTextures = 16;
-    int curTexId = 0;
-    StaticArray<Id, MaxTextures> textures;
+    Id whiteTexture;
     DrawState drawState;
+    static const int MaxImages = 256;
+    StaticArray<Id, MaxImages> images;
+    Array<int> freeImageSlots;
 
     struct nk_draw_vertex vertexData[MaxNumVertices];
     nk_draw_index indexData[MaxNumIndices];

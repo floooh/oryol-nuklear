@@ -27,6 +27,11 @@ nkuiWrapper::Setup(const NKUISetup& setup) {
     this->config.curve_segment_count = setup.CurveSegmentCount;
     this->config.arc_segment_count = setup.ArcSegmentCount;
 
+    this->freeImageSlots.Reserve(MaxImages);
+    for (int i = MaxImages-1; i>=0; i--) {
+        this->freeImageSlots.Add(i);
+    }
+
     this->createResources(setup);
 
     nk_init_default(&this->ctx, &this->defaultFont->handle);
@@ -55,22 +60,38 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     // push a new resource label and store it (needed to destroy resources later)
     this->gfxResLabel = Gfx::PushResourceLabel();
 
+    // create a white placeholder texture for images that have been allocated
+    // but not yet bound, this allows to load images asynchronously, and
+    // already draw UI with a white placeholder texture even though
+    // the actual image data hasn't finished loading yet
+    const int w = 4;
+    const int h = 4;
+    uint32 pixels[w * h];
+    Memory::Fill(pixels, sizeof(pixels), 0xFF);
+    auto texSetup = TextureSetup::FromPixelData(w, h, 1, TextureType::Texture2D, PixelFormat::RGBA8);
+    texSetup.Sampler.WrapU = TextureWrapMode::Repeat;
+    texSetup.Sampler.WrapV = TextureWrapMode::Repeat;
+    texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
+    texSetup.Sampler.MagFilter = TextureFilterMode::Nearest;
+    texSetup.ImageData.Sizes[0][0] = sizeof(pixels);
+    this->whiteTexture = Gfx::CreateResource(texSetup, pixels, sizeof(pixels));
+
     // render default font into an Oryol texture
     nk_font_atlas_init_default(&this->atlas);
     nk_font_atlas_begin(&this->atlas);
     this->defaultFont = nk_font_atlas_add_default(&this->atlas, 13, 0);
     int imgWidth, imgHeight;
     const void* imgData = nk_font_atlas_bake(&this->atlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
-    auto texSetup = TextureSetup::FromPixelData(imgWidth, imgHeight, 1, TextureType::Texture2D, PixelFormat::RGBA8);
+    texSetup = TextureSetup::FromPixelData(imgWidth, imgHeight, 1, TextureType::Texture2D, PixelFormat::RGBA8);
     texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
     texSetup.Sampler.MagFilter = TextureFilterMode::Nearest;
     const int imgSize = imgWidth*imgHeight * PixelFormat::ByteSize(PixelFormat::RGBA8);
     texSetup.ImageData.Sizes[0][0] = imgSize;
-    int texId = this->curTexId++;
-    this->textures[texId] = Gfx::CreateResource(texSetup, imgData, imgSize);
-    nk_font_atlas_end(&this->atlas, nk_handle_id(texId), &this->config.null);
+    struct nk_image img = this->AllocImage();
+    this->BindImage(img, Gfx::CreateResource(texSetup, imgData, imgSize));    
+    nk_font_atlas_end(&this->atlas, img.handle, &this->config.null);
 
     // create mesh with dynamic vertex- and index-buffer
     auto mshSetup = MeshSetup::Empty(MaxNumVertices, Usage::Stream, IndexType::Index16, MaxNumIndices, Usage::Stream);
@@ -98,6 +119,29 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     this->drawState.Pipeline = Gfx::CreateResource(ps);
 
     Gfx::PopResourceLabel();
+}
+
+//------------------------------------------------------------------------------
+struct nk_image
+nkuiWrapper::AllocImage() {
+    o_assert_dbg(!this->freeImageSlots.Empty());
+    return nk_image_id(this->freeImageSlots.PopBack());
+}
+
+//------------------------------------------------------------------------------
+void
+nkuiWrapper::FreeImage(const struct nk_image& image) {
+    int slot = image.handle.id;
+    o_assert_dbg(this->images[slot].IsValid());
+    this->images[slot].Invalidate();
+}
+
+//------------------------------------------------------------------------------
+void
+nkuiWrapper::BindImage(const struct nk_image& image, Id texId) {
+    int slot = image.handle.id;
+    o_assert_dbg(!this->images[slot].IsValid());
+    this->images[slot] = texId;
 }
 
 //------------------------------------------------------------------------------
@@ -166,9 +210,14 @@ nkuiWrapper::Draw() {
     const struct nk_draw_command* cmd = nullptr;
     int elm_offset = 0;
     nk_draw_foreach(cmd, &this->ctx, &this->cmds) {
-        const Id& newTexture = this->textures[(int)cmd->texture.id];
+        const Id& newTexture = this->images[(int)cmd->texture.id];
         if (curTexture != newTexture) {
-            this->drawState.FSTexture[NKUITextures::Texture] = newTexture;
+            if (newTexture.IsValid()) {
+                this->drawState.FSTexture[NKUITextures::Texture] = newTexture;
+            }
+            else {
+                this->drawState.FSTexture[NKUITextures::Texture] = this->whiteTexture;
+            }
             curTexture = newTexture;
             Gfx::ApplyDrawState(this->drawState);
             Gfx::ApplyUniformBlock(vsParams);
