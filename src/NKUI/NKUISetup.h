@@ -10,6 +10,8 @@ namespace Oryol {
 
 class NKUISetup {
 public:
+    /// the default font height
+    float DefaultFontHeight = 13;
     /// global UI alpha value
     float GlobalAlpha = 1.0f;
     /// antialiased lines?

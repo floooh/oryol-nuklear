@@ -69,5 +69,26 @@ NKUI::BindImage(const struct nk_image& image, Id texId) {
     state->nkuiWrapper.BindImage(image, texId);
 }
 
+//------------------------------------------------------------------------------
+void
+NKUI::BeginFontAtlas() {
+    o_assert_dbg(IsValid());
+    state->nkuiWrapper.BeginFontAtlas();
+}
+
+//------------------------------------------------------------------------------
+nk_font*
+NKUI::AddFont(const Buffer& ttfData, float fontHeight) {
+    o_assert_dbg(IsValid());
+    return state->nkuiWrapper.AddFont(ttfData, fontHeight);
+}
+
+//------------------------------------------------------------------------------
+void
+NKUI::EndFontAtlas() {
+    o_assert_dbg(IsValid());
+    state->nkuiWrapper.EndFontAtlas();
+}
+
 } // namespace Oryol
 

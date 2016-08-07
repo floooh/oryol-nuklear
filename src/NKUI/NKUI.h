@@ -37,6 +37,13 @@ public:
     /// bind an Oryol texture to an image handle
     static void BindImage(const struct nk_image& image, Id texId);
 
+    /// begin a font atlas
+    static void BeginFontAtlas();
+    /// add a font to current font atlas
+    static nk_font* AddFont(const Buffer& ttfData, float fontHeight);
+    /// end defining font atlas
+    static void EndFontAtlas();
+
 private:
     struct _state {
         _priv::nkuiWrapper nkuiWrapper;

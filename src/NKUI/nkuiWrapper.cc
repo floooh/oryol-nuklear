@@ -46,7 +46,7 @@ nkuiWrapper::Discard() {
     o_assert_dbg(this->isValid);
     this->defaultFont = nullptr;
     nk_buffer_free(&this->cmds);
-    nk_font_atlas_clear(&this->atlas);
+    nk_font_atlas_clear(&this->defaultAtlas);
     nk_free(&this->ctx);
     Gfx::DestroyResources(this->gfxResLabel);
     this->isValid = false;
@@ -77,11 +77,11 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     this->whiteTexture = Gfx::CreateResource(texSetup, pixels, sizeof(pixels));
 
     // render default font into an Oryol texture
-    nk_font_atlas_init_default(&this->atlas);
-    nk_font_atlas_begin(&this->atlas);
-    this->defaultFont = nk_font_atlas_add_default(&this->atlas, 13, 0);
+    nk_font_atlas_init_default(&this->defaultAtlas);
+    nk_font_atlas_begin(&this->defaultAtlas);
+    this->defaultFont = nk_font_atlas_add_default(&this->defaultAtlas, setup.DefaultFontHeight, 0);
     int imgWidth, imgHeight;
-    const void* imgData = nk_font_atlas_bake(&this->atlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
+    const void* imgData = nk_font_atlas_bake(&this->defaultAtlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
     texSetup = TextureSetup::FromPixelData(imgWidth, imgHeight, 1, TextureType::Texture2D, PixelFormat::RGBA8);
     texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
@@ -91,7 +91,7 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     texSetup.ImageData.Sizes[0][0] = imgSize;
     struct nk_image img = this->AllocImage();
     this->BindImage(img, Gfx::CreateResource(texSetup, imgData, imgSize));    
-    nk_font_atlas_end(&this->atlas, img.handle, &this->config.null);
+    nk_font_atlas_end(&this->defaultAtlas, img.handle, &this->config.null);
 
     // create mesh with dynamic vertex- and index-buffer
     auto mshSetup = MeshSetup::Empty(MaxNumVertices, Usage::Stream, IndexType::Index16, MaxNumIndices, Usage::Stream);
@@ -142,6 +142,42 @@ nkuiWrapper::BindImage(const struct nk_image& image, Id texId) {
     int slot = image.handle.id;
     o_assert_dbg(!this->images[slot].IsValid());
     this->images[slot] = texId;
+}
+
+//------------------------------------------------------------------------------
+void
+nkuiWrapper::BeginFontAtlas() {
+    nk_font_atlas* atlas = &this->fontAtlases[this->curFontAtlas];
+    nk_font_atlas_init_default(atlas);
+    nk_font_atlas_begin(atlas);
+}
+
+//------------------------------------------------------------------------------
+nk_font*
+nkuiWrapper::AddFont(const Buffer& ttfData, float fontHeight) {
+    nk_font_atlas* atlas = &this->fontAtlases[this->curFontAtlas];
+    struct nk_font_config cfg = nk_font_config(0);
+    cfg.oversample_h = 3; cfg.oversample_v = 2;
+    nk_font* font = nk_font_atlas_add_from_memory(atlas, (void*)ttfData.Data(), ttfData.Size(), fontHeight, &cfg);
+    return font;
+}
+
+//------------------------------------------------------------------------------
+void
+nkuiWrapper::EndFontAtlas() {
+    nk_font_atlas* atlas = &this->fontAtlases[this->curFontAtlas++];
+    int imgWidth, imgHeight;
+    const void* imgData = nk_font_atlas_bake(atlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
+    auto texSetup = TextureSetup::FromPixelData(imgWidth, imgHeight, 1, TextureType::Texture2D, PixelFormat::RGBA8);
+    texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
+    texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
+    texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
+    texSetup.Sampler.MagFilter = TextureFilterMode::Nearest;
+    const int imgSize = imgWidth*imgHeight * PixelFormat::ByteSize(PixelFormat::RGBA8);
+    texSetup.ImageData.Sizes[0][0] = imgSize;
+    struct nk_image img = this->AllocImage();
+    this->BindImage(img, Gfx::CreateResource(texSetup, imgData, imgSize));    
+    nk_font_atlas_end(atlas, img.handle, &this->config.null);
 }
 
 //------------------------------------------------------------------------------
@@ -210,7 +246,8 @@ nkuiWrapper::Draw() {
     const struct nk_draw_command* cmd = nullptr;
     int elm_offset = 0;
     nk_draw_foreach(cmd, &this->ctx, &this->cmds) {
-        const Id& newTexture = this->images[(int)cmd->texture.id];
+        int texSlot = int(cmd->texture.id);
+        const Id& newTexture = this->images[texSlot];
         if (curTexture != newTexture) {
             if (newTexture.IsValid()) {
                 this->drawState.FSTexture[NKUITextures::Texture] = newTexture;

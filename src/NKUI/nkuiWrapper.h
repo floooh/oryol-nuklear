@@ -7,6 +7,7 @@
 #include "Core/Types.h"
 #include "Core/Assertion.h"
 #include "Core/Containers/StaticArray.h"
+#include "Core/Containers/Buffer.h"
 #include "NKUI/NKUISetup.h"
 #include "Gfx/Gfx.h"
 
@@ -40,6 +41,12 @@ public:
     void FreeImage(const struct nk_image& image);
     /// bind an Oryol texture to an image handle
     void BindImage(const struct nk_image& image, Id texId);
+    /// begin a font atlas
+    void BeginFontAtlas();
+    /// add a font to current font atlas
+    nk_font* AddFont(const Buffer& ttfData, float fontHeight);
+    /// end defining font atlas
+    void EndFontAtlas();
 
     nk_context ctx;
 
@@ -49,9 +56,10 @@ private:
 
     static const int MaxNumVertices = 64 * 1024;
     static const int MaxNumIndices = 128 * 1024;
+    static const int MaxNumFontAtlases = 4;
 
     bool isValid = false;
-    nk_font_atlas atlas;
+    nk_font_atlas defaultAtlas;
     nk_font* defaultFont = nullptr;
     nk_buffer cmds;
     nk_buffer vbuf;
@@ -64,6 +72,8 @@ private:
     static const int MaxImages = 256;
     StaticArray<Id, MaxImages> images;
     Array<int> freeImageSlots;
+    int curFontAtlas = 0;
+    StaticArray<nk_font_atlas, MaxNumFontAtlases> fontAtlases;
 
     struct nk_draw_vertex vertexData[MaxNumVertices];
     nk_draw_index indexData[MaxNumIndices];
