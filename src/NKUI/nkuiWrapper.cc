@@ -203,6 +203,10 @@ nkuiWrapper::NewFrame() {
             nk_input_key(&this->ctx, NK_KEY_PASTE, 0);
             nk_input_key(&this->ctx, NK_KEY_CUT, 0);
         }
+        const wchar_t* text = Input::Text();
+        while (wchar_t c = *text++) {
+            nk_input_unicode(&this->ctx, nk_rune(c));
+        }
     }
     if (Input::MouseAttached()) {
         const glm::vec2& mousePos = Input::MousePosition();
@@ -212,6 +216,7 @@ nkuiWrapper::NewFrame() {
         bool mmb = Input::MouseButtonPressed(MouseButton::Middle)|Input::MouseButtonDown(MouseButton::Middle);
         bool rmb = Input::MouseButtonPressed(MouseButton::Right)|Input::MouseButtonDown(MouseButton::Right);
         nk_input_motion(&this->ctx, x, y);
+        nk_input_scroll(&this->ctx, Input::MouseScroll().y);
         nk_input_button(&this->ctx, NK_BUTTON_LEFT, x, y, lmb);
         nk_input_button(&this->ctx, NK_BUTTON_MIDDLE, x, y, mmb);
         nk_input_button(&this->ctx, NK_BUTTON_RIGHT, x, y, rmb);
