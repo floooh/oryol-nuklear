@@ -68,7 +68,7 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     const int h = 4;
     uint32 pixels[w * h];
     Memory::Fill(pixels, sizeof(pixels), 0xFF);
-    auto texSetup = TextureSetup::FromPixelData(w, h, 1, TextureType::Texture2D, PixelFormat::RGBA8);
+    auto texSetup = TextureSetup::FromPixelData2D(w, h, 1, PixelFormat::RGBA8);
     texSetup.Sampler.WrapU = TextureWrapMode::Repeat;
     texSetup.Sampler.WrapV = TextureWrapMode::Repeat;
     texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
@@ -82,7 +82,7 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     this->defaultFont = nk_font_atlas_add_default(&this->defaultAtlas, setup.DefaultFontHeight, 0);
     int imgWidth, imgHeight;
     const void* imgData = nk_font_atlas_bake(&this->defaultAtlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
-    texSetup = TextureSetup::FromPixelData(imgWidth, imgHeight, 1, TextureType::Texture2D, PixelFormat::RGBA8);
+    texSetup = TextureSetup::FromPixelData2D(imgWidth, imgHeight, 1, PixelFormat::RGBA8);
     texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
@@ -168,7 +168,7 @@ nkuiWrapper::EndFontAtlas() {
     nk_font_atlas* atlas = &this->fontAtlases[this->curFontAtlas++];
     int imgWidth, imgHeight;
     const void* imgData = nk_font_atlas_bake(atlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
-    auto texSetup = TextureSetup::FromPixelData(imgWidth, imgHeight, 1, TextureType::Texture2D, PixelFormat::RGBA8);
+    auto texSetup = TextureSetup::FromPixelData2D(imgWidth, imgHeight, 1, PixelFormat::RGBA8);
     texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
     texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
