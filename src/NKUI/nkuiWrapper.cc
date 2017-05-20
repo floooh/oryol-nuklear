@@ -243,8 +243,8 @@ nkuiWrapper::Draw() {
     const DisplayAttrs& attrs = Gfx::DisplayAttrs();
     const float width = float(attrs.FramebufferWidth);
     const float height = float(attrs.FramebufferHeight);
-    NKUIShader::VSParams vsParams;
-    vsParams.Proj = glm::ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f);
+    NKUIShader::vsParams vsParams;
+    vsParams.proj = glm::ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f);
 
     // render draw commands
     Id curTexture;
@@ -255,10 +255,10 @@ nkuiWrapper::Draw() {
         const Id& newTexture = this->images[texSlot];
         if (curTexture != newTexture) {
             if (newTexture.IsValid()) {
-                this->drawState.FSTexture[NKUITextures::Texture] = newTexture;
+                this->drawState.FSTexture[NKUIShader::tex] = newTexture;
             }
             else {
-                this->drawState.FSTexture[NKUITextures::Texture] = this->whiteTexture;
+                this->drawState.FSTexture[NKUIShader::tex] = this->whiteTexture;
             }
             curTexture = newTexture;
             Gfx::ApplyDrawState(this->drawState);
