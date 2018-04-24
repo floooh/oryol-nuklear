@@ -68,13 +68,18 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     const int h = 4;
     uint32 pixels[w * h];
     Memory::Fill(pixels, sizeof(pixels), 0xFF);
-    auto texSetup = TextureSetup::FromPixelData2D(w, h, 1, PixelFormat::RGBA8);
-    texSetup.Sampler.WrapU = TextureWrapMode::Repeat;
-    texSetup.Sampler.WrapV = TextureWrapMode::Repeat;
-    texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
-    texSetup.Sampler.MagFilter = TextureFilterMode::Nearest;
-    texSetup.ImageData.Sizes[0][0] = sizeof(pixels);
-    this->whiteTexture = Gfx::CreateResource(texSetup, pixels, sizeof(pixels));
+    this->whiteTexture = Gfx::CreateTexture(TextureDesc()
+        .Type(TextureType::Texture2D)
+        .Width(w)
+        .Height(h)
+        .NumMipMaps(1)
+        .Format(PixelFormat::RGBA8)
+        .WrapU(TextureWrapMode::Repeat)
+        .WrapV(TextureWrapMode::Repeat)
+        .MinFilter(TextureFilterMode::Nearest)
+        .MagFilter(TextureFilterMode::Nearest)
+        .MipSize(0, 0, sizeof(pixels))
+        .MipContent(0, 0, pixels));
 
     // render default font into an Oryol texture
     nk_font_atlas_init_default(&this->defaultAtlas);
@@ -82,42 +87,53 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
     this->defaultFont = nk_font_atlas_add_default(&this->defaultAtlas, setup.DefaultFontHeight, 0);
     int imgWidth, imgHeight;
     const void* imgData = nk_font_atlas_bake(&this->defaultAtlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
-    texSetup = TextureSetup::FromPixelData2D(imgWidth, imgHeight, 1, PixelFormat::RGBA8);
-    texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
-    texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
-    texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
-    texSetup.Sampler.MagFilter = TextureFilterMode::Nearest;
     const int imgSize = imgWidth*imgHeight * PixelFormat::ByteSize(PixelFormat::RGBA8);
-    texSetup.ImageData.Sizes[0][0] = imgSize;
+    Id fontTex = Gfx::CreateTexture(TextureDesc()
+        .Type(TextureType::Texture2D)
+        .Width(imgWidth)
+        .Height(imgHeight)
+        .NumMipMaps(1)
+        .Format(PixelFormat::RGBA8)
+        .WrapU(TextureWrapMode::ClampToEdge)
+        .WrapV(TextureWrapMode::ClampToEdge)
+        .MinFilter(TextureFilterMode::Nearest)
+        .MagFilter(TextureFilterMode::Nearest)
+        .MipSize(0, 0, imgSize)
+        .MipContent(0, 0, imgData));
     struct nk_image img = this->AllocImage();
-    this->BindImage(img, Gfx::CreateResource(texSetup, imgData, imgSize));    
+    this->BindImage(img, fontTex);
     nk_font_atlas_end(&this->defaultAtlas, img.handle, &this->config.null);
 
-    // create mesh with dynamic vertex- and index-buffer
-    auto mshSetup = MeshSetup::Empty(MaxNumVertices, Usage::Stream, IndexType::Index16, MaxNumIndices, Usage::Stream);
-    mshSetup.Layout
-        .Add(VertexAttr::Position, VertexFormat::Float2)
-        .Add(VertexAttr::TexCoord0, VertexFormat::Float2)
-        .Add(VertexAttr::Color0, VertexFormat::UByte4N);
-    o_assert_dbg(mshSetup.Layout.ByteSize() == sizeof(struct nk_draw_vertex));
-    this->drawState.Mesh[0] = Gfx::CreateResource(mshSetup);
+    // create dynamic vertex- and index-buffer
+    this->drawState.VertexBuffers[0] = Gfx::CreateBuffer(BufferDesc()
+        .Type(BufferType::VertexBuffer)
+        .Size(MaxNumVertices * sizeof(struct nk_draw_vertex))
+        .Usage(Usage::Stream));
+    this->drawState.IndexBuffer = Gfx::CreateBuffer(BufferDesc()
+        .Type(BufferType::IndexBuffer)
+        .Size(MaxNumIndices * sizeof(uint16_t))
+        .Usage(Usage::Stream));
 
     // create pipeline state object
-    Id shd = Gfx::CreateResource(NKUIShader::Setup());
-    auto ps = PipelineSetup::FromLayoutAndShader(mshSetup.Layout, shd);
-    ps.DepthStencilState.DepthWriteEnabled = false;
-    ps.DepthStencilState.DepthCmpFunc = CompareFunc::Always;
-    ps.BlendState.BlendEnabled = true;
-    ps.BlendState.SrcFactorRGB = BlendFactor::SrcAlpha;
-    ps.BlendState.DstFactorRGB = BlendFactor::OneMinusSrcAlpha;
-    ps.BlendState.ColorFormat = Gfx::DisplayAttrs().ColorPixelFormat;
-    ps.BlendState.DepthFormat = Gfx::DisplayAttrs().DepthPixelFormat;
-    ps.BlendState.ColorWriteMask = PixelChannel::RGB;
-    ps.RasterizerState.ScissorTestEnabled = true;
-    ps.RasterizerState.CullFaceEnabled = false;
-    ps.RasterizerState.SampleCount = Gfx::DisplayAttrs().SampleCount;
-    this->drawState.Pipeline = Gfx::CreateResource(ps);
-
+    Id shd = Gfx::CreateShader(NKUIShader::Desc());
+    this->drawState.Pipeline = Gfx::CreatePipeline(PipelineDesc()
+        .Shader(shd)
+        .Layout(0, {
+            { "position", VertexFormat::Float2 },
+            { "texcoord0", VertexFormat::Float2 },
+            { "color0", VertexFormat::UByte4N }
+        })
+        .IndexType(IndexType::UInt16)
+        .DepthWriteEnabled(false)
+        .DepthCmpFunc(CompareFunc::Always)
+        .BlendEnabled(true)
+        .BlendSrcFactorRGB(BlendFactor::SrcAlpha)
+        .BlendDstFactorRGB(BlendFactor::OneMinusSrcAlpha)
+        .ColorWriteMask(PixelChannel::RGB)
+        .CullFaceEnabled(false)
+        .ColorFormat(Gfx::DisplayAttrs().ColorFormat)
+        .DepthFormat(Gfx::DisplayAttrs().DepthFormat)
+        .SampleCount(Gfx::DisplayAttrs().SampleCount));
     Gfx::PopResourceLabel();
 }
 
@@ -154,7 +170,7 @@ nkuiWrapper::BeginFontAtlas() {
 
 //------------------------------------------------------------------------------
 nk_font*
-nkuiWrapper::AddFont(const Buffer& ttfData, float fontHeight) {
+nkuiWrapper::AddFont(const MemoryBuffer& ttfData, float fontHeight) {
     nk_font_atlas* atlas = &this->fontAtlases[this->curFontAtlas];
     struct nk_font_config cfg = nk_font_config(0);
     cfg.oversample_h = 3; cfg.oversample_v = 2;
@@ -168,15 +184,21 @@ nkuiWrapper::EndFontAtlas() {
     nk_font_atlas* atlas = &this->fontAtlases[this->curFontAtlas++];
     int imgWidth, imgHeight;
     const void* imgData = nk_font_atlas_bake(atlas, &imgWidth, &imgHeight, NK_FONT_ATLAS_RGBA32);
-    auto texSetup = TextureSetup::FromPixelData2D(imgWidth, imgHeight, 1, PixelFormat::RGBA8);
-    texSetup.Sampler.WrapU = TextureWrapMode::ClampToEdge;
-    texSetup.Sampler.WrapV = TextureWrapMode::ClampToEdge;
-    texSetup.Sampler.MinFilter = TextureFilterMode::Nearest;
-    texSetup.Sampler.MagFilter = TextureFilterMode::Nearest;
     const int imgSize = imgWidth*imgHeight * PixelFormat::ByteSize(PixelFormat::RGBA8);
-    texSetup.ImageData.Sizes[0][0] = imgSize;
+    Id tex = Gfx::CreateTexture(TextureDesc()
+        .Type(TextureType::Texture2D)
+        .Width(imgWidth)
+        .Height(imgHeight)
+        .NumMipMaps(1)
+        .Format(PixelFormat::RGBA8)
+        .WrapU(TextureWrapMode::ClampToEdge)
+        .WrapV(TextureWrapMode::ClampToEdge)
+        .MinFilter(TextureFilterMode::Nearest)
+        .MagFilter(TextureFilterMode::Nearest)
+        .MipSize(0, 0, imgSize)
+        .MipContent(0, 0, imgData));
     struct nk_image img = this->AllocImage();
-    this->BindImage(img, Gfx::CreateResource(texSetup, imgData, imgSize));    
+    this->BindImage(img, tex);
     nk_font_atlas_end(atlas, img.handle, &this->config.null);
 }
 
@@ -233,16 +255,16 @@ nkuiWrapper::Draw() {
     nk_buffer_clear(&this->ibuf);
     nk_convert(&this->ctx, &this->cmds, &this->vbuf, &this->ibuf, &this->config);
     if (this->vbuf.needed > 0) {
-        Gfx::UpdateVertices(this->drawState.Mesh[0], this->vertexData, int(this->vbuf.needed));
+        Gfx::UpdateBuffer(this->drawState.VertexBuffers[0], this->vertexData, int(this->vbuf.needed));
     }
     if (this->ibuf.needed > 0) {
-        Gfx::UpdateIndices(this->drawState.Mesh[0], this->indexData, int(this->ibuf.needed));
+        Gfx::UpdateBuffer(this->drawState.IndexBuffer, this->indexData, int(this->ibuf.needed));
     }
 
     // compute projection matrix
     const DisplayAttrs& attrs = Gfx::DisplayAttrs();
-    const float width = float(attrs.FramebufferWidth);
-    const float height = float(attrs.FramebufferHeight);
+    const float width = float(attrs.Width);
+    const float height = float(attrs.Height);
     NKUIShader::vsParams vsParams;
     vsParams.proj = glm::ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f);
 
