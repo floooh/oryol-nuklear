@@ -78,7 +78,7 @@ NKUI::BeginFontAtlas() {
 
 //------------------------------------------------------------------------------
 nk_font*
-NKUI::AddFont(const Buffer& ttfData, float fontHeight) {
+NKUI::AddFont(const MemoryBuffer& ttfData, float fontHeight) {
     o_assert_dbg(IsValid());
     return state->nkuiWrapper.AddFont(ttfData, fontHeight);
 }

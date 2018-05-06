@@ -40,7 +40,7 @@ public:
     /// begin a font atlas
     static void BeginFontAtlas();
     /// add a font to current font atlas
-    static nk_font* AddFont(const Buffer& ttfData, float fontHeight);
+    static nk_font* AddFont(const MemoryBuffer& ttfData, float fontHeight);
     /// end defining font atlas
     static void EndFontAtlas();
 

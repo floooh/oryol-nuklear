@@ -7,7 +7,7 @@
 #include "Core/Types.h"
 #include "Core/Assertion.h"
 #include "Core/Containers/StaticArray.h"
-#include "Core/Containers/Buffer.h"
+#include "Core/Containers/MemoryBuffer.h"
 #include "NKUI/NKUISetup.h"
 #include "Gfx/Gfx.h"
 
@@ -44,7 +44,7 @@ public:
     /// begin a font atlas
     void BeginFontAtlas();
     /// add a font to current font atlas
-    nk_font* AddFont(const Buffer& ttfData, float fontHeight);
+    nk_font* AddFont(const MemoryBuffer& ttfData, float fontHeight);
     /// end defining font atlas
     void EndFontAtlas();
 
