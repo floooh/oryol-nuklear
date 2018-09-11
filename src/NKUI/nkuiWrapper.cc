@@ -26,6 +26,16 @@ nkuiWrapper::Setup(const NKUISetup& setup) {
     this->config.circle_segment_count = setup.CircleSegmentCount;
     this->config.curve_segment_count = setup.CurveSegmentCount;
     this->config.arc_segment_count = setup.ArcSegmentCount;
+    
+    static const struct nk_draw_vertex_layout_element vertex_layout[] = {
+        {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nkui_draw_vertex, position)},
+        {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nkui_draw_vertex, uv)},
+        {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, NK_OFFSETOF(struct nkui_draw_vertex, col)},
+        {NK_VERTEX_LAYOUT_END}
+    };
+    this->config.vertex_layout = vertex_layout;
+    this->config.vertex_size = sizeof(struct nkui_draw_vertex);
+    this->config.vertex_alignment = NK_ALIGNOF(struct nkui_draw_vertex);
 
     this->freeImageSlots.Reserve(MaxImages);
     for (int i = MaxImages-1; i>=0; i--) {
@@ -99,7 +109,7 @@ nkuiWrapper::createResources(const NKUISetup& setup) {
         .Add(VertexAttr::Position, VertexFormat::Float2)
         .Add(VertexAttr::TexCoord0, VertexFormat::Float2)
         .Add(VertexAttr::Color0, VertexFormat::UByte4N);
-    o_assert_dbg(mshSetup.Layout.ByteSize() == sizeof(struct nk_draw_vertex));
+    o_assert_dbg(mshSetup.Layout.ByteSize() == sizeof(struct nkui_draw_vertex));
     this->drawState.Mesh[0] = Gfx::CreateResource(mshSetup);
 
     // create pipeline state object
@@ -216,7 +226,8 @@ nkuiWrapper::NewFrame() {
         bool mmb = Input::MouseButtonPressed(MouseButton::Middle)|Input::MouseButtonDown(MouseButton::Middle);
         bool rmb = Input::MouseButtonPressed(MouseButton::Right)|Input::MouseButtonDown(MouseButton::Right);
         nk_input_motion(&this->ctx, x, y);
-        nk_input_scroll(&this->ctx, Input::MouseScroll().y);
+        glm::vec2 mouseScroll = Input::MouseScroll();
+        nk_input_scroll(&this->ctx, nk_vec2(mouseScroll.x, mouseScroll.y)  );
         nk_input_button(&this->ctx, NK_BUTTON_LEFT, x, y, lmb);
         nk_input_button(&this->ctx, NK_BUTTON_MIDDLE, x, y, mmb);
         nk_input_button(&this->ctx, NK_BUTTON_RIGHT, x, y, rmb);

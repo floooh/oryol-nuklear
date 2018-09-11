@@ -24,6 +24,12 @@
 
 namespace Oryol {
 namespace _priv {
+    
+struct nkui_draw_vertex {
+    float position[2];
+    float uv[2];
+    nk_byte col[4];
+};
 
 class nkuiWrapper {
 public:
@@ -75,7 +81,7 @@ private:
     int curFontAtlas = 0;
     StaticArray<nk_font_atlas, MaxNumFontAtlases> fontAtlases;
 
-    struct nk_draw_vertex vertexData[MaxNumVertices];
+    struct nkui_draw_vertex vertexData[MaxNumVertices];
     nk_draw_index indexData[MaxNumIndices];
 };
 
