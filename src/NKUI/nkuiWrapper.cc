@@ -279,8 +279,10 @@ nkuiWrapper::Draw() {
                               (int)(height - (cmd->clip_rect.y + cmd->clip_rect.h)),
                               (int)(cmd->clip_rect.w),
                               (int)(cmd->clip_rect.h));
-        Gfx::Draw(PrimitiveGroup(elm_offset, cmd->elem_count));
-        elm_offset += cmd->elem_count;
+        if (cmd->elem_count > 0) {
+            Gfx::Draw(PrimitiveGroup(elm_offset, cmd->elem_count));
+            elm_offset += cmd->elem_count;
+        }
     }
     nk_clear(&this->ctx);
 }
