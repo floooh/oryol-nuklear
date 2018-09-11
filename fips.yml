@@ -4,7 +4,7 @@
 ---
 imports:
     fips-nuklear:
-        git:    https://github.com/floooh/fips-nuklear
+        git:    https://github.com/fips-libs/fips-nuklear
     oryol:
         git:    https://github.com/floooh/oryol.git
 
