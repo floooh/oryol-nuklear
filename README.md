@@ -2,7 +2,7 @@
 
 Nuklear UI wrapper for Oryol (https://github.com/vurtun/nuklear)
 
-Oryol sample: https://floooh.github.com/oryol-samples/asmjs/NuklearUIDemo.html
+Oryol sample: http://floooh.github.io/oryol-samples/wasm/NuklearUIBasic.html
 
 ### How to integrate into your Oryol project:
 
@@ -30,4 +30,4 @@ Run 'fips gen' to fetch the new dependencies and rebuild the build files:
 ...
 ```
 
-Have a look at the the [Oryol Nuklear UI sample application](https://github.com/floooh/oryol-samples/blob/master/src/NuklearUIDemo/NuklearUIDemo.cc) for how to use the NKUI module.
+Have a look at the the [Oryol Nuklear UI sample application](https://github.com/floooh/oryol-samples/blob/master/src/NuklearUIBasic/NuklearUIBasic.cc) for how to use the NKUI module.
