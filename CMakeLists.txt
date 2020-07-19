@@ -8,6 +8,6 @@ include("${FIPS_ROOT_DIR}/cmake/fips.cmake")
 include_directories(src)
 fips_setup()
 fips_project(oryol-imgui)
-fips_add_subdirectory(src/IMUI)
+fips_add_subdirectory(src/NKUI)
 fips_finish()
 
